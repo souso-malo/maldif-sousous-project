@@ -1,35 +1,50 @@
 {
-  "name": "coffre-fort-manager",
+  "name": "maldif-sousous-project",
   "version": "1.0.0",
-  "description": "Application de gestion de coffre-fort pour commandes clients",
+  "description": "Gestionnaire de coffre-fort avec partage temps réel par souso-malo",
   "private": true,
+  "author": "souso-malo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/souso-malo/maldif-sousous-project.git"
+  },
+  "homepage": "https://maldif-sousous-project.vercel.app",
+  "keywords": [
+    "coffre-fort",
+    "gestion-financiere",
+    "partage-temps-reel",
+    "collaboration",
+    "nextjs",
+    "typescript",
+    "vercel"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@types/node": "20.8.0",
-    "@types/react": "18.2.0",
-    "@types/react-dom": "18.2.0",
-    "autoprefixer": "10.4.16",
-    "date-fns": "2.30.0",
-    "lucide-react": "0.290.0",
-    "next": "14.2.5",
-    "postcss": "8.4.31",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "tailwindcss": "3.3.0",
-    "typescript": "5.2.2"
+    "next": "14.0.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "lucide-react": "^0.294.0",
+    "date-fns": "^2.30.0"
   },
   "devDependencies": {
-    "eslint": "8.57.1",
-    "@eslint/config-array": "^0.17.1",
-    "@eslint/object-schema": "^2.1.4",
-    "eslint-config-next": "14.2.5",
-    "rimraf": "^5.0.10",
-    "glob": "^10.4.5",
-    "lru-cache": "^10.2.2"
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
