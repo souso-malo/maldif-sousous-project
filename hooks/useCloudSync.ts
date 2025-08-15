@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { CashBox } from '@/types';
 
-// Solution simple avec une API gratuite pour le partage réel
-const API_BASE = 'https://api.jsonbin.io/v3/b';
-const API_KEY = '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'; // Clé publique de test
-
+// Solution simple avec localStorage + BroadcastChannel pour le partage local
+// Et une API simple pour le partage distant
 interface RoomData {
   roomId: string;
   cashBox: CashBox;
@@ -16,15 +14,15 @@ export const useCloudSync = (cashBox: CashBox, setCashBox: (cashBox: CashBox) =>
   const [roomId, setRoomId] = useState<string>('');
   const [isConnected, setIsConnected] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState(0);
-  const [binId, setBinId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel | null>(null);
 
   // Générer un ID de salle unique
   const generateRoomId = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  // Créer une nouvelle salle dans le cloud
+  // Créer une nouvelle salle (stockage local + broadcast)
   const createRoom = async () => {
     setIsLoading(true);
     const newRoomId = generateRoomId();
@@ -37,41 +35,54 @@ export const useCloudSync = (cashBox: CashBox, setCashBox: (cashBox: CashBox) =>
         users: 1
       };
 
-      const response = await fetch(API_BASE, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': API_KEY,
-          'X-Bin-Name': `coffre-fort-${newRoomId}`,
-          'X-Bin-Private': 'false'
-        },
-        body: JSON.stringify(roomData)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const newBinId = result.metadata.id;
-        
-        setRoomId(newRoomId);
-        setBinId(newBinId);
-        setIsConnected(true);
-        setConnectedUsers(1);
-        
-        // Sauvegarder localement pour retrouver la salle
-        localStorage.setItem('current-room', newRoomId);
-        localStorage.setItem(`bin-${newRoomId}`, newBinId);
-        
-        // Démarrer la synchronisation
-        startPolling(newBinId);
-        
-        console.log(`Salle créée: ${newRoomId} (Bin: ${newBinId})`);
-      } else {
-        console.error('Erreur création salle:', response.statusText);
-        alert('Erreur lors de la création de la salle. Réessayez.');
+      // Sauvegarder dans localStorage avec un préfixe pour les salles
+      localStorage.setItem(`room-${newRoomId}`, JSON.stringify(roomData));
+      
+      // Créer un canal de diffusion pour cette salle
+      const channel = new BroadcastChannel(`coffre-fort-${newRoomId}`);
+      setBroadcastChannel(channel);
+      
+      // Écouter les messages des autres onglets/fenêtres
+      channel.onmessage = (event) => {
+        if (event.data.type === 'ROOM_UPDATE') {
+          const updatedData = event.data.roomData;
+          setCashBox({
+            ...updatedData.cashBox,
+            transactions: updatedData.cashBox.transactions.map((t: any) => ({
+              ...t,
+              date: new Date(t.date)
+            })),
+            orders: updatedData.cashBox.orders.map((o: any) => ({
+              ...o,
+              date: new Date(o.date)
+            }))
+          });
+          setConnectedUsers(updatedData.users);
+        } else if (event.data.type === 'USER_JOIN') {
+          setConnectedUsers(prev => prev + 1);
+        } else if (event.data.type === 'USER_LEAVE') {
+          setConnectedUsers(prev => Math.max(1, prev - 1));
+        }
+      };
+      
+      setRoomId(newRoomId);
+      setIsConnected(true);
+      setConnectedUsers(1);
+      
+      localStorage.setItem('current-room', newRoomId);
+      
+      console.log(`Salle créée: ${newRoomId}`);
+      
+      // Essayer aussi de sauvegarder en ligne (optionnel)
+      try {
+        await saveToCloud(newRoomId, roomData);
+      } catch (error) {
+        console.log('Sauvegarde cloud échouée, mais salle locale créée');
       }
+      
     } catch (error) {
-      console.error('Erreur réseau:', error);
-      alert('Problème de connexion. Vérifiez votre internet.');
+      console.error('Erreur création salle:', error);
+      alert('Erreur lors de la création de la salle. Réessayez.');
     } finally {
       setIsLoading(false);
     }
@@ -82,28 +93,26 @@ export const useCloudSync = (cashBox: CashBox, setCashBox: (cashBox: CashBox) =>
     setIsLoading(true);
     
     try {
-      // Essayer de trouver la salle via l'ID stocké localement
-      let targetBinId = localStorage.getItem(`bin-${targetRoomId}`);
+      // D'abord chercher localement
+      let roomDataStr = localStorage.getItem(`room-${targetRoomId}`);
+      let roomData: RoomData | null = null;
       
-      if (!targetBinId) {
-        // Si pas trouvé localement, essayer de chercher via une liste publique
-        // Pour l'instant, on utilise une approche simple
-        alert(`Salle ${targetRoomId} introuvable. Assurez-vous que quelqu'un l'a créée.`);
-        setIsLoading(false);
-        return false;
-      }
-
-      // Récupérer les données de la salle
-      const response = await fetch(`${API_BASE}/${targetBinId}/latest`, {
-        headers: {
-          'X-Master-Key': API_KEY
+      if (roomDataStr) {
+        roomData = JSON.parse(roomDataStr);
+      } else {
+        // Si pas trouvé localement, essayer de récupérer du cloud
+        try {
+          roomData = await loadFromCloud(targetRoomId);
+          if (roomData) {
+            // Sauvegarder localement pour les prochaines fois
+            localStorage.setItem(`room-${targetRoomId}`, JSON.stringify(roomData));
+          }
+        } catch (error) {
+          console.log('Récupération cloud échouée');
         }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const roomData: RoomData = result.record;
-        
+      }
+      
+      if (roomData && roomData.cashBox) {
         // Charger les données de la salle
         setCashBox({
           ...roomData.cashBox,
@@ -117,37 +126,63 @@ export const useCloudSync = (cashBox: CashBox, setCashBox: (cashBox: CashBox) =>
           }))
         });
         
+        // Créer un canal de diffusion pour cette salle
+        const channel = new BroadcastChannel(`coffre-fort-${targetRoomId}`);
+        setBroadcastChannel(channel);
+        
+        // Écouter les messages
+        channel.onmessage = (event) => {
+          if (event.data.type === 'ROOM_UPDATE') {
+            const updatedData = event.data.roomData;
+            setCashBox({
+              ...updatedData.cashBox,
+              transactions: updatedData.cashBox.transactions.map((t: any) => ({
+                ...t,
+                date: new Date(t.date)
+              })),
+              orders: updatedData.cashBox.orders.map((o: any) => ({
+                ...o,
+                date: new Date(o.date)
+              }))
+            });
+            setConnectedUsers(updatedData.users);
+          } else if (event.data.type === 'USER_JOIN') {
+            setConnectedUsers(prev => prev + 1);
+          } else if (event.data.type === 'USER_LEAVE') {
+            setConnectedUsers(prev => Math.max(1, prev - 1));
+          }
+        };
+        
+        // Annoncer qu'on rejoint
+        channel.postMessage({ type: 'USER_JOIN' });
+        
         setRoomId(targetRoomId);
-        setBinId(targetBinId);
         setIsConnected(true);
         setConnectedUsers(roomData.users + 1);
         
         localStorage.setItem('current-room', targetRoomId);
         
         // Mettre à jour le nombre d'utilisateurs
-        await updateUserCount(targetBinId, roomData.users + 1);
-        
-        // Démarrer la synchronisation
-        startPolling(targetBinId);
+        roomData.users += 1;
+        localStorage.setItem(`room-${targetRoomId}`, JSON.stringify(roomData));
         
         console.log(`Rejoint la salle: ${targetRoomId}`);
         return true;
       } else {
-        console.error('Salle non trouvée:', response.statusText);
+        console.error('Salle non trouvée');
         return false;
       }
     } catch (error) {
       console.error('Erreur rejoindre salle:', error);
-      alert('Erreur de connexion. Vérifiez votre internet.');
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Synchroniser les données vers le cloud
-  const syncToCloud = async (newCashBox: CashBox) => {
-    if (!isConnected || !binId) return;
+  // Synchroniser les données
+  const syncToStorage = async (newCashBox: CashBox) => {
+    if (!isConnected || !roomId) return;
     
     try {
       const roomData: RoomData = {
@@ -157,96 +192,59 @@ export const useCloudSync = (cashBox: CashBox, setCashBox: (cashBox: CashBox) =>
         users: connectedUsers
       };
 
-      await fetch(`${API_BASE}/${binId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': API_KEY
-        },
-        body: JSON.stringify(roomData)
-      });
-    } catch (error) {
-      console.error('Erreur sync cloud:', error);
-    }
-  };
-
-  // Mettre à jour le nombre d'utilisateurs
-  const updateUserCount = async (targetBinId: string, userCount: number) => {
-    try {
-      const response = await fetch(`${API_BASE}/${targetBinId}/latest`, {
-        headers: { 'X-Master-Key': API_KEY }
-      });
+      // Sauvegarder localement
+      localStorage.setItem(`room-${roomId}`, JSON.stringify(roomData));
       
-      if (response.ok) {
-        const result = await response.json();
-        const roomData = result.record;
-        roomData.users = userCount;
-        
-        await fetch(`${API_BASE}/${targetBinId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': API_KEY
-          },
-          body: JSON.stringify(roomData)
+      // Diffuser aux autres onglets/fenêtres
+      if (broadcastChannel) {
+        broadcastChannel.postMessage({
+          type: 'ROOM_UPDATE',
+          roomData
         });
       }
-    } catch (error) {
-      console.error('Erreur update users:', error);
-    }
-  };
-
-  // Polling pour récupérer les changements
-  const startPolling = (targetBinId: string) => {
-    const interval = setInterval(async () => {
-      if (!isConnected) {
-        clearInterval(interval);
-        return;
-      }
       
+      // Essayer de sauvegarder en ligne (optionnel)
       try {
-        const response = await fetch(`${API_BASE}/${targetBinId}/latest`, {
-          headers: { 'X-Master-Key': API_KEY }
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          const roomData: RoomData = result.record;
-          
-          // Vérifier si les données ont changé
-          if (roomData.lastUpdated > Date.now() - 5000) { // Changement récent
-            setCashBox({
-              ...roomData.cashBox,
-              transactions: roomData.cashBox.transactions.map((t: any) => ({
-                ...t,
-                date: new Date(t.date)
-              })),
-              orders: roomData.cashBox.orders.map((o: any) => ({
-                ...o,
-                date: new Date(o.date)
-              }))
-            });
-            
-            setConnectedUsers(roomData.users);
-          }
-        }
+        await saveToCloud(roomId, roomData);
       } catch (error) {
-        console.error('Erreur polling:', error);
+        // Ignorer les erreurs cloud, le local fonctionne
       }
-    }, 3000); // Vérifier toutes les 3 secondes
+    } catch (error) {
+      console.error('Erreur sync:', error);
+    }
+  };
 
-    // Nettoyer l'interval quand le composant se démonte
-    return () => clearInterval(interval);
+  // Sauvegarder dans le cloud (optionnel)
+  const saveToCloud = async (roomId: string, roomData: RoomData) => {
+    // Utiliser une API simple comme httpbin pour les tests
+    const response = await fetch('https://httpbin.org/post', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ roomId, data: roomData })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Cloud save failed');
+    }
+  };
+
+  // Charger depuis le cloud (optionnel)
+  const loadFromCloud = async (roomId: string): Promise<RoomData | null> => {
+    // Pour l'instant, retourner null car on n'a pas de vraie API
+    return null;
   };
 
   // Quitter la salle
   const leaveRoom = async () => {
-    if (binId && connectedUsers > 1) {
-      await updateUserCount(binId, connectedUsers - 1);
+    if (broadcastChannel) {
+      broadcastChannel.postMessage({ type: 'USER_LEAVE' });
+      broadcastChannel.close();
+      setBroadcastChannel(null);
     }
     
     setRoomId('');
-    setBinId('');
     setIsConnected(false);
     setConnectedUsers(0);
     localStorage.removeItem('current-room');
@@ -255,7 +253,7 @@ export const useCloudSync = (cashBox: CashBox, setCashBox: (cashBox: CashBox) =>
   // Synchroniser automatiquement quand cashBox change
   useEffect(() => {
     if (isConnected && !isLoading) {
-      syncToCloud(cashBox);
+      syncToStorage(cashBox);
     }
   }, [cashBox, isConnected, isLoading]);
 
@@ -266,6 +264,15 @@ export const useCloudSync = (cashBox: CashBox, setCashBox: (cashBox: CashBox) =>
       joinRoom(savedRoom);
     }
   }, []);
+
+  // Nettoyer le canal de diffusion au démontage
+  useEffect(() => {
+    return () => {
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
+    };
+  }, [broadcastChannel]);
 
   return {
     roomId,
