@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { CashBox, Transaction, Order } from '@/types';
-import { useWorkingCloudSync } from './useWorkingCloudSync';
+import { useFixedSync } from './useFixedSync';
+import { cleanOldRoomData } from '@/utils/cleanStorage';
 
 const STORAGE_KEY = 'cashbox-data';
 
@@ -15,7 +16,12 @@ const initialState: CashBox = {
 export const useCashBox = () => {
   const [cashBox, setCashBox] = useState<CashBox>(initialState);
   
-  // Intégrer le partage cloud qui fonctionne vraiment
+  // Nettoyer les anciennes données de partage au démarrage
+  useEffect(() => {
+    cleanOldRoomData();
+  }, []);
+  
+  // Intégrer le partage corrigé (pas de création automatique)
   const {
     roomId,
     isConnected,
@@ -24,7 +30,7 @@ export const useCashBox = () => {
     createRoom,
     joinRoom,
     leaveRoom
-  } = useWorkingCloudSync(cashBox, setCashBox);
+  } = useFixedSync(cashBox, setCashBox);
 
   // Charger les données depuis localStorage au démarrage
   useEffect(() => {
