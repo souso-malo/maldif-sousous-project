@@ -1,6 +1,10 @@
 {
-  "name": "maldif-sousous-project",
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "version": 2,
+  "builds": [
+    { "src": "package.json", "use": "@vercel/next" }
+  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "out",
+  "framework": "nextjs"
 }
+
