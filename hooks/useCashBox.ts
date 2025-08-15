@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CashBox, Transaction, Order } from '@/types';
-import { useFixedSync } from './useFixedSync';
+import { useRealWorldSync } from './useRealWorldSync';
 import { cleanOldRoomData } from '@/utils/cleanStorage';
 
 const STORAGE_KEY = 'cashbox-data';
@@ -21,7 +21,7 @@ export const useCashBox = () => {
     cleanOldRoomData();
   }, []);
   
-  // Intégrer le partage corrigé (pas de création automatique)
+  // Intégrer API REST pour partage mondial réel
   const {
     roomId,
     isConnected,
@@ -30,7 +30,7 @@ export const useCashBox = () => {
     createRoom,
     joinRoom,
     leaveRoom
-  } = useFixedSync(cashBox, setCashBox);
+  } = useRealWorldSync(cashBox, setCashBox);
 
   // Charger les données depuis localStorage au démarrage
   useEffect(() => {
