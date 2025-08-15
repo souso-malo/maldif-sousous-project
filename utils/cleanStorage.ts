@@ -8,7 +8,7 @@ export const cleanOldRoomData = () => {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key) {
-        // Supprimer les anciennes clés de salle
+        // Supprimer les anciennes clés de salle (mais garder universal-rooms-db)
         if (key.startsWith('room-') || 
             key.startsWith('gist-') || 
             key.startsWith('simple-room-') ||
@@ -22,6 +22,8 @@ export const cleanOldRoomData = () => {
             key === 'current-room') {
           keysToRemove.push(key);
         }
+        
+        // NE PAS supprimer universal-rooms-db (base de données partagée)
       }
     }
     

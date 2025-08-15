@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CashBox, Transaction, Order } from '@/types';
-import { useWorkingRealSync } from './useWorkingRealSync';
+import { useUniversalSync } from './useUniversalSync';
 import { cleanOldRoomData } from '@/utils/cleanStorage';
 
 const STORAGE_KEY = 'cashbox-data';
@@ -21,7 +21,7 @@ export const useCashBox = () => {
     cleanOldRoomData();
   }, []);
   
-  // Intégrer solution qui fonctionne vraiment (GitHub Gist + localStorage)
+  // Intégrer solution universelle PC ↔ Téléphone ↔ Tablette
   const {
     roomId,
     isConnected,
@@ -30,7 +30,7 @@ export const useCashBox = () => {
     createRoom,
     joinRoom,
     leaveRoom
-  } = useWorkingRealSync(cashBox, setCashBox);
+  } = useUniversalSync(cashBox, setCashBox);
 
   // Charger les données depuis localStorage au démarrage
   useEffect(() => {
