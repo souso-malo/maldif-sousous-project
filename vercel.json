@@ -1,29 +1,11 @@
 {
   "name": "maldif-sousous-project",
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "build": {
-    "env": {
-      "NODE_ENV": "production"
-    }
-  },
   "functions": {
     "app/**/*.{js,ts,tsx}": {
       "runtime": "nodejs18.x"
     }
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }
