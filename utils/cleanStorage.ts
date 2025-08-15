@@ -11,7 +11,10 @@ export const cleanOldRoomData = () => {
         // Supprimer les anciennes clés de salle
         if (key.startsWith('room-') || 
             key.startsWith('gist-') || 
+            key.startsWith('simple-room-') ||
+            key.startsWith('coffre-room-') ||
             key.includes('rooms-list') ||
+            key.includes('binId') ||
             key === 'current-room') {
           keysToRemove.push(key);
         }
