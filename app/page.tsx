@@ -29,6 +29,7 @@ export default function Home() {
     roomId,
     isConnected,
     connectedUsers,
+    isLoading,
     createRoom,
     joinRoom,
     leaveRoom
@@ -62,6 +63,7 @@ export default function Home() {
                   roomId={roomId}
                   isConnected={isConnected}
                   connectedUsers={connectedUsers}
+                  isLoading={isLoading}
                   onCreateRoom={createRoom}
                   onJoinRoom={joinRoom}
                   onLeaveRoom={leaveRoom}

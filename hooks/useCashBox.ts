@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CashBox, Transaction, Order } from '@/types';
-import { useRealTimeSync } from './useRealTimeSync';
+import { useCloudSync } from './useCloudSync';
 
 const STORAGE_KEY = 'cashbox-data';
 
@@ -15,15 +15,16 @@ const initialState: CashBox = {
 export const useCashBox = () => {
   const [cashBox, setCashBox] = useState<CashBox>(initialState);
   
-  // Intégrer le partage en temps réel
+  // Intégrer le partage cloud en temps réel
   const {
     roomId,
     isConnected,
     connectedUsers,
+    isLoading,
     createRoom,
     joinRoom,
     leaveRoom
-  } = useRealTimeSync(cashBox, setCashBox);
+  } = useCloudSync(cashBox, setCashBox);
 
   // Charger les données depuis localStorage au démarrage
   useEffect(() => {
@@ -246,10 +247,11 @@ export const useCashBox = () => {
     clearAllOrders,
     updateBalance,
     deleteBalance,
-    // Fonctions de partage
+    // Fonctions de partage cloud
     roomId,
     isConnected,
     connectedUsers,
+    isLoading,
     createRoom,
     joinRoom,
     leaveRoom

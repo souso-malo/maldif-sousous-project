@@ -7,8 +7,9 @@ interface ShareManagerProps {
   roomId: string;
   isConnected: boolean;
   connectedUsers: number;
+  isLoading?: boolean;
   onCreateRoom: () => void;
-  onJoinRoom: (roomId: string) => boolean;
+  onJoinRoom: (roomId: string) => Promise<boolean>;
   onLeaveRoom: () => void;
 }
 
@@ -16,6 +17,7 @@ export default function ShareManager({
   roomId,
   isConnected,
   connectedUsers,
+  isLoading = false,
   onCreateRoom,
   onJoinRoom,
   onLeaveRoom
@@ -43,19 +45,20 @@ export default function ShareManager({
     }
   };
 
-  const handleJoinRoom = () => {
+  const handleJoinRoom = async () => {
     if (!joinRoomId.trim()) {
       setError('Veuillez entrer un code de salle');
       return;
     }
 
-    const success = onJoinRoom(joinRoomId.trim().toUpperCase());
+    setError('Connexion en cours...');
+    const success = await onJoinRoom(joinRoomId.trim().toUpperCase());
     if (success) {
       setShowModal(false);
       setJoinRoomId('');
       setError('');
     } else {
-      setError('Salle introuvable. Vérifiez le code.');
+      setError('Salle introuvable. Assurez-vous que quelqu\'un l\'a créée.');
     }
   };
 
@@ -114,9 +117,10 @@ export default function ShareManager({
                 </p>
                 <button
                   onClick={handleCreateRoom}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
+                  disabled={isLoading}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Créer une salle
+                  {isLoading ? 'Création...' : 'Créer une salle'}
                 </button>
               </div>
 
@@ -136,9 +140,10 @@ export default function ShareManager({
                   />
                   <button
                     onClick={handleJoinRoom}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+                    disabled={isLoading}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Rejoindre
+                    {isLoading ? 'Connexion...' : 'Rejoindre'}
                   </button>
                 </div>
                 {error && (
