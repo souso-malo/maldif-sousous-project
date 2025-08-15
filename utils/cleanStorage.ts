@@ -13,6 +13,8 @@ export const cleanOldRoomData = () => {
             key.startsWith('gist-') || 
             key.startsWith('simple-room-') ||
             key.startsWith('coffre-room-') ||
+            key.startsWith('global-room-') ||
+            key.startsWith('room-mapping-') ||
             key.includes('rooms-list') ||
             key.includes('binId') ||
             key === 'current-room') {
